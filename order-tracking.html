@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Tracking Management</title>
+
+    <!-- Google Fonts: Modern Professional (Poppins + Open Sans) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        heading: ['Poppins', 'sans-serif'],
+                        body: ['Open Sans', 'sans-serif']
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        secondary: '#3B82F6',
+                        cta: '#F97316',
+                        background: '#F8FAFC',
+                        text: '#1E293B',
+                        border: '#E2E8F0'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        /* Custom scrollbar for table */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Editable cell styles */
+        .editable-cell {
+            position: relative;
+        }
+
+        .editable-cell.editing {
+            padding: 0;
+        }
+
+        .editable-cell input,
+        .editable-cell select,
+        .editable-cell textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #3B82F6;
+            border-radius: 0.375rem;
+            outline: none;
+            font-size: 0.875rem;
+        }
+
+        .editable-cell textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* Mobile card layout */
+        .order-card {
+            background: white;
+            border-radius: 0.75rem;
+            border: 1px solid #E2E8F0;
+            transition: all 0.2s;
+        }
+
+        .order-card:active {
+            transform: scale(0.98);
+        }
+
+        .editable-field {
+            min-height: 44px;
+            /* Touch-friendly minimum */
+            display: flex;
+            align-items: center;
+        }
+
+        .editable-field.editing input,
+        .editable-field.editing select,
+        .editable-field.editing textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #3B82F6;
+            border-radius: 0.5rem;
+            outline: none;
+            font-size: 1rem;
+            min-height: 44px;
+        }
+
+        .editable-field.editing textarea {
+            min-height: 88px;
+        }
+
+        /* Refresh button animation */
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .refresh-spinning {
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-background min-h-screen">
+    <!-- Header -->
+    <header class="bg-white border-b border-border sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <h1 class="text-2xl sm:text-3xl font-semibold text-text">Order Tracking Management</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl 2xl:max-w-[90vw] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <!-- Action Buttons -->
+        <div class="mb-6 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <button id="addOrderBtn"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-primary hover:bg-blue-700 text-white font-medium px-6 py-3.5 rounded-lg transition-colors duration-200 cursor-pointer shadow-sm hover:shadow-md">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Add Order to Track
+            </button>
+
+            <button id="refreshAllBtn"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white hover:bg-gray-50 text-gray-700 font-medium px-6 py-3.5 rounded-lg transition-colors duration-200 cursor-pointer shadow-sm hover:shadow-md border border-gray-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span id="refreshText">Refresh All</span>
+            </button>
+        </div>
+
+        <!-- Mobile Card View (visible on mobile only) -->
+        <div id="cardContainer" class="block md:hidden space-y-4">
+            <!-- Cards will be inserted here -->
+        </div>
+
+        <!-- Desktop Table View (visible on tablet and up) -->
+        <div class="hidden md:block bg-white rounded-lg shadow-sm border border-border overflow-hidden">
+            <div class="table-container overflow-x-auto">
+                <table class="w-full table-fixed">
+                    <thead class="bg-gray-50 sticky top-0">
+                        <tr class="border-b border-border">
+                            <th
+                                class="w-36 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Trạng thái tài khoản</th>
+                            <th
+                                class="w-36 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Mã vận đơn</th>
+                            <th
+                                class="w-40 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Trạng thái giao hàng</th>
+                            <th
+                                class="w-28 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Cookie</th>
+                            <th
+                                class="w-32 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Username</th>
+                            <th
+                                class="w-32 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Tên người dùng</th>
+                            <th
+                                class="w-48 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Địa chỉ</th>
+                            <th
+                                class="w-40 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Link</th>
+                            <th
+                                class="w-28 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Phân loại</th>
+                            <th
+                                class="w-24 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-border">
+                        <!-- Data will be loaded from Google Sheets -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State for Table -->
+            <div id="emptyStateTable" class="hidden text-center py-12">
+                <svg class="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p class="text-gray-500 text-lg font-medium mb-2">No orders yet</p>
+                <p class="text-gray-400 text-sm">Click "Add Order to Track" to get started</p>
+            </div>
+        </div>
+
+        <!-- Empty State for Cards (Mobile) -->
+        <div id="emptyStateCards"
+            class="hidden md:hidden bg-white rounded-lg shadow-sm border border-border p-12 text-center">
+            <svg class="mx-auto w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <p class="text-gray-500 text-lg font-medium mb-2">No orders yet</p>
+            <p class="text-gray-400 text-sm">Click "Add Order to Track" to get started</p>
+        </div>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-text">Delete Order</h3>
+            </div>
+            <p class="text-gray-600 mb-6">Are you sure you want to delete this order? This action cannot be undone.</p>
+            <div class="flex gap-3 justify-end">
+                <button id="cancelDelete"
+                    class="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200 font-medium cursor-pointer">
+                    Cancel
+                </button>
+                <button id="confirmDelete"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-200 font-medium cursor-pointer">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ CONFIG ============
+        const PROXY_URL = 'https://soft-dream-598e.taikhoanemail109.workers.dev?url=';
+        const API_BASE_URL = 'https://spx.vn/shipment/order/open/order/get_order_info';
+        const LANGUAGE_CODE = 'vi';
+
+        // Google Apps Script URL (2-way sync)
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxj26iIObm6J236xNb2Gx-oSWEGQP1FoFODSGkpt5QbtCaPlDJTiqq55feE4Wys7Qns/exec';
+
+        // Order status options
+        const ORDER_STATUSES = [
+            'Chờ mã vận đơn',
+            'Chưa lên đơn',
+            'Đã có mã vận đơn',
+            'Giao hàng thành công',
+            'Bị Hủy'
+        ];
+
+        // Delivery status mapping
+        const DELIVERY_STATUS_MAP = {
+            'Delivered': { label: 'Đã giao', color: 'green' },
+            'In Transit': { label: 'Đang vận chuyển', color: 'blue' },
+            'Pending': { label: 'Chưa lấy hàng', color: 'yellow' },
+            'Failed': { label: 'Giao thất bại', color: 'red' },
+            'Unknown': { label: 'Chưa có thông tin', color: 'gray' }
+        };
+
+        let rowIdCounter = 2;
+        let currentDeleteRow = null;
+        let isRefreshing = false;
+
+        // ============ GOOGLE SHEETS CRUD ============
+        // Load all orders from Google Sheets
+        async function loadOrdersFromSheet() {
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=getAll`);
+                const data = await response.json();
+
+                if (data.status === 'success' && data.data) {
+                    const tableBody = document.getElementById('tableBody');
+                    const cardContainer = document.getElementById('cardContainer');
+
+                    // Clear existing rows (except sample)
+                    tableBody.innerHTML = '';
+                    cardContainer.innerHTML = '';
+
+                    // Reset counter
+                    rowIdCounter = 1;
+
+                    // Create rows from sheet data
+                    data.data.forEach(order => {
+                        const rowId = rowIdCounter++;
+                        createRowFromData(rowId, order);
+                    });
+
+                    toggleEmptyState();
+                    return data.data;
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                alert('Lỗi khi tải dữ liệu từ Google Sheets');
+            }
+        }
+
+        // Save new order to Google Sheets
+        async function saveOrderToSheet(order) {
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'create',
+                        data: order
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    console.log('Order saved to sheet:', result);
+                    return result;
+                } else {
+                    throw new Error(result.message || 'Failed to save');
+                }
+            } catch (error) {
+                console.error('Error saving order:', error);
+                alert('Lỗi khi lưu đơn hàng vào Google Sheets');
+                throw error;
+            }
+        }
+
+        // Update order in Google Sheets
+        async function updateOrderInSheet(rowId, field, value) {
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update',
+                        rowId: rowId,
+                        field: field,
+                        value: value
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    console.log('Order updated in sheet:', result);
+                    return result;
+                } else {
+                    throw new Error(result.message || 'Failed to update');
+                }
+            } catch (error) {
+                console.error('Error updating order:', error);
+                alert('Lỗi khi cập nhật đơn hàng trong Google Sheets');
+                throw error;
+            }
+        }
+
+        // Delete order from Google Sheets
+        async function deleteOrderFromSheet(rowId) {
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'delete',
+                        rowId: rowId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    console.log('Order deleted from sheet:', result);
+                    return result;
+                } else {
+                    throw new Error(result.message || 'Failed to delete');
+                }
+            } catch (error) {
+                console.error('Error deleting order:', error);
+                alert('Lỗi khi xóa đơn hàng khỏi Google Sheets');
+                throw error;
+            }
+        }
+
+        // Create row from sheet data
+        function createRowFromData(rowId, order) {
+            const tableBody = document.getElementById('tableBody');
+            const cardContainer = document.getElementById('cardContainer');
+
+            // Create table row
+            const newRow = document.createElement('tr');
+            newRow.className = 'hover:bg-gray-50 transition-colors duration-150';
+            newRow.setAttribute('data-row-id', rowId);
+            newRow.innerHTML = `
+                <td class="px-3 py-3 editable-cell" data-field="orderStatus">
+                    <span class="cell-value text-sm">${order.orderStatus || ''}</span>
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="trackingNumber">
+                    <span class="cell-value text-sm font-mono truncate block" title="${order.trackingNumber || ''}">${order.trackingNumber || ''}</span>
+                </td>
+                <td class="px-3 py-3">
+                    ${getDeliveryStatusBadge(order.deliveryStatus || 'Unknown')}
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="cookie">
+                    <span class="cell-value text-sm font-mono truncate block" title="${order.cookie || ''}">${order.cookie || ''}</span>
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="username">
+                    <span class="cell-value text-sm truncate block" title="${order.username || ''}">${order.username || ''}</span>
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="name">
+                    <span class="cell-value text-sm truncate block" title="${order.name || ''}">${order.name || ''}</span>
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="address">
+                    <span class="cell-value text-sm truncate block" title="${order.address || ''}">${order.address || ''}</span>
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="link">
+                    <span class="cell-value text-sm text-blue-600 truncate block" title="${order.link || ''}">${order.link || ''}</span>
+                </td>
+                <td class="px-3 py-3 editable-cell" data-field="category">
+                    <span class="cell-value text-sm truncate block" title="${order.category || ''}">${order.category || ''}</span>
+                </td>
+                <td class="px-3 py-3">
+                    <div class="flex items-center gap-1">
+                        <button
+                            class="view-details-btn p-1.5 text-primary hover:bg-blue-50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            title="View Details"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                        <button
+                            class="delete-btn p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            title="Delete"
+                        >
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(newRow);
+
+            // Create card
+            const newCard = createNewCard(rowId, order);
+            cardContainer.appendChild(newCard);
+        }
+
+        // Get delivery status badge HTML
+        function getDeliveryStatusBadge(status = 'Unknown') {
+            const statusInfo = DELIVERY_STATUS_MAP[status] || DELIVERY_STATUS_MAP['Unknown'];
+            const colorClasses = {
+                'green': 'bg-green-100 text-green-800',
+                'blue': 'bg-blue-100 text-blue-800',
+                'yellow': 'bg-yellow-100 text-yellow-800',
+                'red': 'bg-red-100 text-red-800',
+                'gray': 'bg-gray-100 text-gray-800'
+            };
+            const dotClasses = {
+                'green': 'bg-green-500',
+                'blue': 'bg-blue-500',
+                'yellow': 'bg-yellow-500',
+                'red': 'bg-red-500',
+                'gray': 'bg-gray-500'
+            };
+
+            return `
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colorClasses[statusInfo.color]}">
+                    <span class="w-1.5 h-1.5 ${dotClasses[statusInfo.color]} rounded-full mr-1.5"></span>
+                    ${statusInfo.label}
+                </span>
+            `;
+        }
+
+
+        // Make cell editable
+        function makeEditable(cell) {
+            if (cell.classList.contains('editing')) return;
+
+            const field = cell.getAttribute('data-field');
+            const valueSpan = cell.querySelector('.cell-value');
+            const currentValue = valueSpan.textContent;
+
+            cell.classList.add('editing');
+
+            let input;
+            if (field === 'orderStatus') {
+                // Create select dropdown for order status
+                input = document.createElement('select');
+                input.className = 'w-full px-3 py-2 border-2 border-secondary rounded-md outline-none text-sm';
+                ORDER_STATUSES.forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status;
+                    option.textContent = status;
+                    if (status === currentValue) option.selected = true;
+                    input.appendChild(option);
+                });
+            } else if (field === 'address') {
+                // Create textarea for address
+                input = document.createElement('textarea');
+                input.className = 'w-full px-3 py-2 border-2 border-secondary rounded-md outline-none text-sm';
+                input.value = currentValue;
+            } else {
+                // Create text input for other fields
+                input = document.createElement('input');
+                input.type = field === 'link' ? 'url' : 'text';
+                input.className = 'w-full px-3 py-2 border-2 border-secondary rounded-md outline-none text-sm';
+                input.value = currentValue;
+            }
+
+            // Save on blur
+            input.addEventListener('blur', function () {
+                saveCell(cell, input.value);
+            });
+
+            // Save on Enter key (except textarea)
+            if (field !== 'address') {
+                input.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        input.blur();
+                    }
+                });
+            }
+
+            // Save on Escape key - cancel
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelEdit(cell, currentValue);
+                }
+            });
+
+            valueSpan.style.display = 'none';
+            cell.appendChild(input);
+            input.focus();
+        }
+
+        // Save cell value
+        function saveCell(cell, newValue) {
+            const valueSpan = cell.querySelector('.cell-value');
+            const input = cell.querySelector('input, select, textarea');
+            const field = cell.getAttribute('data-field');
+            const row = cell.closest('tr');
+            const rowId = row.getAttribute('data-row-id');
+
+            if (input) {
+                input.remove();
+            }
+
+            valueSpan.textContent = newValue;
+            // Add title for hover tooltip (especially useful for truncated text)
+            if (newValue) {
+                valueSpan.setAttribute('title', newValue);
+            } else {
+                valueSpan.removeAttribute('title');
+            }
+            valueSpan.style.display = '';
+            cell.classList.remove('editing');
+
+            // Update corresponding card
+            const card = document.querySelector(`#cardContainer .order-card[data-row-id="${rowId}"]`);
+            if (card) {
+                const cardField = card.querySelector(`[data-field="${field}"] .field-value`);
+                if (cardField) {
+                    const displayValue = newValue.trim() || 'Click to add';
+                    cardField.textContent = displayValue;
+                }
+
+                // Update delivery status if tracking number changed
+                if (field === 'trackingNumber' && newValue.trim()) {
+                    updateDeliveryStatus(row, newValue, card);
+                }
+            } else if (field === 'trackingNumber' && newValue.trim()) {
+                // If no card, just update table delivery status
+                updateDeliveryStatus(row, newValue);
+            }
+
+            // Save to Google Sheets
+            updateOrderInSheet(rowId, field, newValue);
+        }
+
+        // Cancel edit
+        function cancelEdit(cell, originalValue) {
+            const valueSpan = cell.querySelector('.cell-value');
+            const input = cell.querySelector('input, select, textarea');
+
+            if (input) {
+                input.remove();
+            }
+
+            valueSpan.textContent = originalValue;
+            valueSpan.style.display = '';
+            cell.classList.remove('editing');
+        }
+
+        // ============ API ============
+        async function fetchOrderStatus(trackingNumber) {
+            try {
+                const apiUrl = `${API_BASE_URL}?spx_tn=${encodeURIComponent(trackingNumber)}&language_code=${LANGUAGE_CODE}`;
+                const url = `${PROXY_URL}${encodeURIComponent(apiUrl)}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data.retcode === 0 && data.data?.sls_tracking_info?.records) {
+                    const record = data.data.sls_tracking_info.records[0];
+
+                    return {
+                        status: 'success',
+                        description: record.description || '',
+                        trackingCode: record.tracking_code || '',
+                        lastUpdate: record.actual_time
+                            ? new Date(record.actual_time * 1000).toLocaleString('vi-VN')
+                            : '',
+                        // Map description to status
+                        deliveryStatus: mapDescriptionToStatus(record.description)
+                    };
+                } else {
+                    return {
+                        status: 'error',
+                        description: data.message || 'Không tìm thấy',
+                        deliveryStatus: 'Unknown'
+                    };
+                }
+            } catch (error) {
+                console.error(`Error fetching ${trackingNumber}:`, error);
+                return {
+                    status: 'error',
+                    description: 'Lỗi kết nối',
+                    deliveryStatus: 'Unknown'
+                };
+            }
+        }
+
+        // Map description to delivery status
+        function mapDescriptionToStatus(description) {
+            if (!description) return 'Unknown';
+
+            const desc = description.toLowerCase();
+
+            if (desc.includes('đã giao') || desc.includes('delivered')) {
+                return 'Delivered';
+            } else if (desc.includes('đang giao') || desc.includes('đang vận chuyển') || desc.includes('in transit')) {
+                return 'In Transit';
+            } else if (desc.includes('chưa lấy') || desc.includes('pending')) {
+                return 'Pending';
+            } else if (desc.includes('thất bại') || desc.includes('failed') || desc.includes('trả')) {
+                return 'Failed';
+            } else {
+                return 'In Transit'; // Default for other statuses
+            }
+        }
+
+        // API call to get delivery status
+        async function updateDeliveryStatus(row, trackingNumber, card = null) {
+            const deliveryStatusCell = row.children[2];
+
+            // Show loading state in table
+            deliveryStatusCell.innerHTML = `
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    <svg class="animate-spin w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang tải...
+                </span>
+            `;
+
+            // Show loading state in card if provided
+            if (card) {
+                const cardStatusContainer = card.querySelector('.delivery-status-container');
+                if (cardStatusContainer) {
+                    cardStatusContainer.innerHTML = `
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            <svg class="animate-spin w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Đang tải...
+                        </span>
+                    `;
+                }
+            }
+
+            // Fetch actual status from API
+            const result = await fetchOrderStatus(trackingNumber);
+            const badgeHTML = getDeliveryStatusBadge(result.deliveryStatus);
+
+            // Update table with title showing description
+            const badgeWithTitle = badgeHTML.replace('<span class="inline-flex', `<span title="${result.description || 'Chưa có thông tin'}\nCập nhật: ${result.lastUpdate || 'N/A'}" class="inline-flex cursor-help`);
+            deliveryStatusCell.innerHTML = badgeWithTitle;
+
+            // Update card if provided
+            if (card) {
+                const cardStatusContainer = card.querySelector('.delivery-status-container');
+                if (cardStatusContainer) {
+                    cardStatusContainer.innerHTML = badgeWithTitle;
+                }
+            }
+        }
+
+        // Create new card for mobile view
+        function createNewCard(rowId, data = {}) {
+            const card = document.createElement('div');
+            card.className = 'order-card p-4 shadow-sm';
+            card.setAttribute('data-row-id', rowId);
+
+            const orderStatus = data.orderStatus || 'Pending';
+            const trackingNumber = data.trackingNumber || '';
+            const deliveryStatus = data.deliveryStatus || 'Unknown';
+            const cookie = data.cookie || '';
+            const username = data.username || '';
+            const name = data.name || '';
+            const address = data.address || '';
+            const link = data.link || '';
+            const category = data.category || '';
+
+            card.innerHTML = `
+                <!-- Header with Status and Actions -->
+                <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+                    <div class="flex-1">
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Order Status</div>
+                        <div class="editable-field" data-field="orderStatus">
+                            <span class="field-value text-base font-normal text-gray-900">${orderStatus}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 ml-4">
+                        <button
+                            class="view-details-btn p-2.5 text-primary hover:bg-blue-50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            title="View Details"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                        <button
+                            class="delete-btn p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 cursor-pointer"
+                            title="Delete"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fields Grid -->
+                <div class="space-y-3.5">
+                    <!-- Tracking Number -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Tracking Number</div>
+                        <div class="editable-field" data-field="trackingNumber">
+                            <span class="field-value text-sm text-gray-900 font-mono">${trackingNumber || 'Click to add'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Status -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Delivery Status</div>
+                        <div class="delivery-status-container">
+                            ${getDeliveryStatusBadge(deliveryStatus)}
+                        </div>
+                    </div>
+
+                    <!-- Username -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Username</div>
+                        <div class="editable-field" data-field="username">
+                            <span class="field-value text-sm text-gray-900">${username || 'Click to add'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Name -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Name</div>
+                        <div class="editable-field" data-field="name">
+                            <span class="field-value text-sm text-gray-900">${name || 'Click to add'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Category -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Category</div>
+                        <div class="editable-field" data-field="category">
+                            <span class="field-value text-sm text-gray-900">${category || 'Click to add'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Address -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Address</div>
+                        <div class="editable-field" data-field="address">
+                            <span class="field-value text-sm text-gray-900">${address || 'Click to add'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Cookie -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Cookie</div>
+                        <div class="editable-field" data-field="cookie">
+                            <span class="field-value text-sm text-gray-900 font-mono break-all">${cookie || 'Click to add'}</span>
+                        </div>
+                    </div>
+
+                    <!-- Link -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Link</div>
+                        <div class="editable-field" data-field="link">
+                            <span class="field-value text-sm text-blue-600 break-all">${link || 'Click to add'}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Make card field editable
+        function makeFieldEditable(field) {
+            if (field.classList.contains('editing')) return;
+
+            const fieldName = field.getAttribute('data-field');
+            const valueSpan = field.querySelector('.field-value');
+            const currentValue = valueSpan.textContent;
+            const isPlaceholder = currentValue === 'Click to add';
+            const actualValue = isPlaceholder ? '' : currentValue;
+
+            field.classList.add('editing');
+
+            let input;
+            if (fieldName === 'orderStatus') {
+                input = document.createElement('select');
+                input.className = 'w-full px-3 py-2.5 border-2 border-secondary rounded-lg outline-none text-base';
+                ORDER_STATUSES.forEach(status => {
+                    const option = document.createElement('option');
+                    option.value = status;
+                    option.textContent = status;
+                    if (status === actualValue) option.selected = true;
+                    input.appendChild(option);
+                });
+            } else if (fieldName === 'address') {
+                input = document.createElement('textarea');
+                input.className = 'w-full px-3 py-2.5 border-2 border-secondary rounded-lg outline-none text-base resize-none';
+                input.rows = 3;
+                input.value = actualValue;
+            } else {
+                input = document.createElement('input');
+                input.type = fieldName === 'link' ? 'url' : 'text';
+                input.className = 'w-full px-3 py-2.5 border-2 border-secondary rounded-lg outline-none text-base';
+                input.value = actualValue;
+            }
+
+            // Save on blur
+            input.addEventListener('blur', function () {
+                saveField(field, input.value);
+            });
+
+            // Save on Enter (except textarea)
+            if (fieldName !== 'address') {
+                input.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        input.blur();
+                    }
+                });
+            }
+
+            // Cancel on Escape
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelFieldEdit(field, isPlaceholder ? 'Click to add' : actualValue);
+                }
+            });
+
+            valueSpan.style.display = 'none';
+            field.appendChild(input);
+            input.focus();
+        }
+
+        // Save card field
+        function saveField(field, newValue) {
+            const valueSpan = field.querySelector('.field-value');
+            const input = field.querySelector('input, select, textarea');
+            const fieldName = field.getAttribute('data-field');
+            const card = field.closest('.order-card');
+            const rowId = card.getAttribute('data-row-id');
+
+            if (input) {
+                input.remove();
+            }
+
+            const displayValue = newValue.trim() || 'Click to add';
+            valueSpan.textContent = displayValue;
+            valueSpan.style.display = '';
+            field.classList.remove('editing');
+
+            // Update corresponding table row
+            const tableRow = document.querySelector(`#tableBody tr[data-row-id="${rowId}"]`);
+            if (tableRow) {
+                const tableCell = tableRow.querySelector(`[data-field="${fieldName}"] .cell-value`);
+                if (tableCell) {
+                    tableCell.textContent = newValue;
+                }
+
+                // Update delivery status if tracking number changed
+                if (fieldName === 'trackingNumber' && newValue.trim()) {
+                    updateDeliveryStatus(tableRow, newValue, card);
+                }
+            }
+
+            // Save to Google Sheets
+            updateOrderInSheet(rowId, fieldName, newValue);
+        }
+
+        // Cancel field edit
+        function cancelFieldEdit(field, originalValue) {
+            const valueSpan = field.querySelector('.field-value');
+            const input = field.querySelector('input, select, textarea');
+
+            if (input) {
+                input.remove();
+            }
+
+            valueSpan.textContent = originalValue;
+            valueSpan.style.display = '';
+            field.classList.remove('editing');
+        }
+
+        // Toggle empty state
+        function toggleEmptyState() {
+            const tableBody = document.getElementById('tableBody');
+            const cardContainer = document.getElementById('cardContainer');
+            const emptyStateTable = document.getElementById('emptyStateTable');
+            const emptyStateCards = document.getElementById('emptyStateCards');
+
+            // Table empty state
+            if (tableBody.children.length === 0) {
+                emptyStateTable.classList.remove('hidden');
+            } else {
+                emptyStateTable.classList.add('hidden');
+            }
+
+            // Card empty state
+            if (cardContainer.children.length === 0) {
+                emptyStateCards.classList.remove('hidden');
+            } else {
+                emptyStateCards.classList.add('hidden');
+            }
+        }
+
+        // Event Listeners
+        document.getElementById('addOrderBtn').addEventListener('click', async function () {
+            const rowId = rowIdCounter++;
+
+            // Create new order object
+            const newOrder = {
+                orderStatus: 'Chờ mã vận đơn',
+                trackingNumber: '',
+                deliveryStatus: 'Unknown',
+                cookie: '',
+                username: '',
+                name: '',
+                address: '',
+                link: '',
+                category: ''
+            };
+
+            // Save to Google Sheets first
+            try {
+                await saveOrderToSheet(newOrder);
+
+                // If successful, create row and card
+                createRowFromData(rowId, newOrder);
+                toggleEmptyState();
+
+                // Auto-focus on tracking number (desktop only, to avoid mobile keyboard popup)
+                if (window.innerWidth >= 768) {
+                    const newRow = document.querySelector(`tr[data-row-id="${rowId}"]`);
+                    if (newRow) {
+                        const firstEditableCell = newRow.querySelector('[data-field="trackingNumber"]');
+                        setTimeout(() => makeEditable(firstEditableCell), 100);
+                    }
+                }
+            } catch (error) {
+                // If save failed, decrement counter
+                rowIdCounter--;
+            }
+        });
+
+        // Delegate click events for editable cells
+        document.getElementById('tableBody').addEventListener('click', function (e) {
+            const cell = e.target.closest('.editable-cell');
+            if (cell && !cell.classList.contains('editing')) {
+                makeEditable(cell);
+            }
+        });
+
+        // Delegate click events for editable fields in cards
+        document.getElementById('cardContainer').addEventListener('click', function (e) {
+            const field = e.target.closest('.editable-field');
+            if (field && !field.classList.contains('editing')) {
+                makeFieldEditable(field);
+            }
+        });
+
+        // Delegate click events for delete buttons (both table and cards)
+        document.addEventListener('click', function (e) {
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (deleteBtn) {
+                const row = deleteBtn.closest('tr');
+                const card = deleteBtn.closest('.order-card');
+
+                if (row) {
+                    currentDeleteRow = row;
+                    document.getElementById('deleteModal').classList.remove('hidden');
+                } else if (card) {
+                    currentDeleteRow = card;
+                    document.getElementById('deleteModal').classList.remove('hidden');
+                }
+            }
+        });
+
+        // Delegate click events for view details buttons (both table and cards)
+        document.addEventListener('click', function (e) {
+            const viewBtn = e.target.closest('.view-details-btn');
+            if (viewBtn) {
+                const row = viewBtn.closest('tr');
+                const card = viewBtn.closest('.order-card');
+                let link = '';
+                let rowId = '';
+
+                if (row) {
+                    const linkCell = row.querySelector('[data-field="link"] .cell-value');
+                    link = linkCell.textContent.trim();
+                    rowId = row.getAttribute('data-row-id');
+                } else if (card) {
+                    const linkField = card.querySelector('[data-field="link"] .field-value');
+                    link = linkField.textContent.trim();
+                    if (link === 'Click to add') link = '';
+                    rowId = card.getAttribute('data-row-id');
+                }
+
+                if (link) {
+                    // Navigate to link (or open in new tab)
+                    window.open(link, '_blank');
+                } else {
+                    // If no link, redirect to details page with row ID
+                    alert(`View details for order #${rowId}\n(Will redirect to: /order/${rowId})`);
+                    // window.location.href = `/order/${rowId}`;
+                }
+            }
+        });
+
+        // Delete modal handlers
+        document.getElementById('cancelDelete').addEventListener('click', function () {
+            document.getElementById('deleteModal').classList.add('hidden');
+            currentDeleteRow = null;
+        });
+
+        document.getElementById('confirmDelete').addEventListener('click', async function () {
+            if (currentDeleteRow) {
+                const rowId = currentDeleteRow.getAttribute('data-row-id');
+
+                // Delete from Google Sheets first
+                try {
+                    await deleteOrderFromSheet(rowId);
+
+                    // If successful, remove both table row and card with matching rowId
+                    const tableRow = document.querySelector(`#tableBody tr[data-row-id="${rowId}"]`);
+                    const card = document.querySelector(`#cardContainer .order-card[data-row-id="${rowId}"]`);
+
+                    if (tableRow) tableRow.remove();
+                    if (card) card.remove();
+
+                    toggleEmptyState();
+                } catch (error) {
+                    // Error already handled in deleteOrderFromSheet
+                }
+            }
+            document.getElementById('deleteModal').classList.add('hidden');
+            currentDeleteRow = null;
+        });
+
+        // Close modal on backdrop click
+        document.getElementById('deleteModal').addEventListener('click', function (e) {
+            if (e.target === this) {
+                this.classList.add('hidden');
+                currentDeleteRow = null;
+            }
+        });
+
+        // Refresh all delivery statuses
+        async function refreshAllStatuses() {
+            if (isRefreshing) return;
+
+            isRefreshing = true;
+            const refreshBtn = document.getElementById('refreshAllBtn');
+            const refreshText = document.getElementById('refreshText');
+            const refreshIcon = refreshBtn.querySelector('svg');
+
+            // Update UI to show refreshing state
+            refreshBtn.disabled = true;
+            refreshBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            refreshIcon.classList.add('refresh-spinning');
+            refreshText.textContent = 'Đang làm mới...';
+
+            // Get all rows with tracking numbers
+            const tableRows = Array.from(document.querySelectorAll('#tableBody tr'));
+            let updated = 0;
+
+            for (const row of tableRows) {
+                const trackingCell = row.querySelector('[data-field="trackingNumber"] .cell-value');
+                const trackingNumber = trackingCell?.textContent.trim();
+
+                if (trackingNumber && trackingNumber !== 'Click to add') {
+                    const rowId = row.getAttribute('data-row-id');
+                    const card = document.querySelector(`#cardContainer .order-card[data-row-id="${rowId}"]`);
+
+                    // Update status for this row
+                    await updateDeliveryStatus(row, trackingNumber, card);
+                    updated++;
+                }
+            }
+
+            // Reset UI
+            isRefreshing = false;
+            refreshBtn.disabled = false;
+            refreshBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+            refreshIcon.classList.remove('refresh-spinning');
+            refreshText.textContent = 'Refresh All';
+
+            // Show notification
+            if (updated > 0) {
+                console.log(`Updated ${updated} orders`);
+            } else {
+                console.log('No orders with tracking numbers to update');
+            }
+        }
+
+        // Refresh button click handler
+        document.getElementById('refreshAllBtn').addEventListener('click', refreshAllStatuses);
+
+        // Initial setup - Load data from Google Sheets
+        window.addEventListener('DOMContentLoaded', async function () {
+            try {
+                await loadOrdersFromSheet();
+            } catch (error) {
+                console.error('Failed to load initial data:', error);
+                toggleEmptyState();
+            }
+        });
+    </script>
+</body>
+
+</html>
