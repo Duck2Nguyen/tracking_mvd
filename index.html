@@ -531,6 +531,11 @@
 
         // Get delivery status badge HTML
         function getDeliveryStatusBadge(status = 'Unknown') {
+            // Return empty string if status is Unknown
+            if (status === 'Unknown') {
+                return '';
+            }
+
             // const statusInfo = DELIVERY_STATUS_MAP[status] || DELIVERY_STATUS_MAP['Unknown'];
 
             const statusInfo = { label: status, color: 'green' }
@@ -630,6 +635,7 @@
             const row = cell.closest('tr');
             const rowId = row.getAttribute('data-row-id');
             const isNewRow = row.getAttribute('data-is-new') === 'true';
+            const originalValue = valueSpan.textContent; // Get original value before changes
 
             if (input) {
                 input.remove();
@@ -663,8 +669,8 @@
                 updateDeliveryStatus(row, newValue);
             }
 
-            // Only save to Google Sheets if NOT a new row AND field is not deliveryStatus
-            if (!isNewRow && field !== 'deliveryStatus') {
+            // Only save to Google Sheets if value has changed, NOT a new row AND field is not deliveryStatus
+            if (!isNewRow && field !== 'deliveryStatus' && newValue !== originalValue) {
                 updateOrderInSheet(rowId, field, newValue);
             }
         }
@@ -966,6 +972,7 @@
             const card = field.closest('.order-card');
             const rowId = card.getAttribute('data-row-id');
             const isNewRow = card.getAttribute('data-is-new') === 'true';
+            const originalValue = valueSpan.textContent; // Get original value before changes
 
             if (input) {
                 input.remove();
@@ -990,8 +997,8 @@
                 }
             }
 
-            // Only save to Google Sheets if NOT a new row AND field is not deliveryStatus
-            if (!isNewRow && fieldName !== 'deliveryStatus') {
+            // Only save to Google Sheets if value has changed, NOT a new row AND field is not deliveryStatus
+            if (!isNewRow && fieldName !== 'deliveryStatus' && newValue !== originalValue) {
                 updateOrderInSheet(rowId, fieldName, newValue);
             }
         }
@@ -1242,13 +1249,22 @@
             if (currentDeleteRow) {
                 const rowId = currentDeleteRow.getAttribute('data-row-id');
 
-                // Delete from Google Sheets first
+                // Hide modal immediately to show loading
+                document.getElementById('deleteModal').classList.add('hidden');
+
+                // Delete from Google Sheets
                 try {
                     await deleteOrderFromSheet(rowId);
 
                     // If successful, remove both table row and card with matching rowId
                     const tableRow = document.querySelector(`#tableBody tr[data-row-id="${rowId}"]`);
                     const card = document.querySelector(`#cardContainer .order-card[data-row-id="${rowId}"]`);
+
+                    if (tableRow) tableRow.remove();
+                    if (card) card.remove();
+
+                    toggleEmptyState();
+                    currentDeleteRow = null;
 
                     if (tableRow) tableRow.remove();
                     if (card) card.remove();
