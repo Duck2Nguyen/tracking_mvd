@@ -801,7 +801,7 @@
         // Create new card for mobile view
         function createNewCard(rowId, data = {}, isNewRow = false) {
             const card = document.createElement('div');
-            card.className = 'order-card p-4 shadow-sm';
+            card.className = 'order-card p-4 shadow-sm collapsed';
             card.setAttribute('data-row-id', rowId);
             if (isNewRow) {
                 card.setAttribute('data-is-new', 'true');
@@ -820,18 +820,44 @@
                 <!-- Header with Status and Actions -->
                 <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
                     <div class="flex-1">
-                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Order Status</div>
-                        <div class="editable-field" data-field="orderStatus">
-                            <span class="field-value text-base font-normal text-gray-900">${orderStatus}</span>
+                        <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Trạng thái giao hàng</div>
+                        <div class="delivery-status-container">
+                            ${getDeliveryStatusBadge('Unknown')}
                         </div>
                     </div>
                     <div class="flex items-center gap-2 ml-4">
+                        <button class="toggle-expand-btn p-2.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200 cursor-pointer" title="Expand/Collapse">
+                            <svg class="toggle-icon w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                            </svg>
+                        </button>
                         ${isNewRow ? `<button class="save-new-row-btn p-2.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors duration-200 cursor-pointer" title="Save Order"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></button>` : `<button class="view-details-btn p-2.5 text-primary hover:bg-blue-50 rounded-lg transition-colors duration-200 cursor-pointer" title="View Details"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg></button><button class="delete-btn p-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 cursor-pointer" title="Delete"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></button>`}
                     </div>
                 </div>
 
-                <!-- Fields Grid -->
-                <div class="space-y-3.5">
+                <!-- Collapsed View (Summary) -->
+                <div class="collapsed-view space-y-2">
+                    <!-- Tracking Number -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-600 uppercase tracking-wide">Mã vận đơn</div>
+                        <p class="text-sm text-gray-900 font-mono">${trackingNumber || 'Chưa có'}</p>
+                    </div>
+                    
+                    <!-- Name -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-600 uppercase tracking-wide">Tên người dùng</div>
+                        <p class="text-sm text-gray-900">${name || 'Chưa có'}</p>
+                    </div>
+                    
+                    <!-- Category -->
+                    <div>
+                        <div class="text-xs font-bold text-gray-600 uppercase tracking-wide">Phân loại</div>
+                        <p class="text-sm text-gray-900">${category || 'Chưa có'}</p>
+                    </div>
+                </div>
+
+                <!-- Fields Grid (Expanded View) -->
+                <div class="expanded-view hidden space-y-3.5">
                     <!-- Tracking Number -->
                     <div>
                         <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">Tracking Number</div>
@@ -1187,6 +1213,27 @@
                     saveNewRow(row);
                 } else if (card) {
                     saveNewRow(card);
+                }
+            }
+        });
+
+        // Delegate click events for toggle expand/collapse (mobile cards only)
+        document.addEventListener('click', function (e) {
+            const toggleBtn = e.target.closest('.toggle-expand-btn');
+            if (toggleBtn) {
+                const card = toggleBtn.closest('.order-card');
+                if (card) {
+                    const collapsedView = card.querySelector('.collapsed-view');
+                    const expandedView = card.querySelector('.expanded-view');
+                    const toggleIcon = toggleBtn.querySelector('.toggle-icon');
+
+                    // Toggle visibility
+                    collapsedView.classList.toggle('hidden');
+                    expandedView.classList.toggle('hidden');
+
+                    // Rotate icon
+                    toggleIcon.style.transform = expandedView.classList.contains('hidden') ? 'rotate(0deg)' : 'rotate(180deg)';
+                    toggleIcon.style.transition = 'transform 0.3s ease-in-out';
                 }
             }
         });
