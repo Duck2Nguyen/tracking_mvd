@@ -520,7 +520,7 @@
                     <span class="cell-value text-sm font-mono truncate block" title="${order.trackingNumber || ''}">${order.trackingNumber || ''}</span>
                 </td>
                 <td class="px-3 py-3">
-                    ${getDeliveryStatusBadge(order.deliveryStatus || 'Unknown')}
+                    ${getDeliveryStatusBadge(order.deliveryStatus || 'Unknown', '')}
                 </td>
                 <td class="px-3 py-3 editable-cell" data-field="cookie">
                     <span class="cell-value text-sm font-mono truncate block" title="${order.cookie || ''}">${order.cookie || ''}</span>
@@ -559,7 +559,17 @@
         }
 
         // Get delivery status badge HTML
-        function getDeliveryStatusBadge(status = 'Unknown') {
+        function getDeliveryStatusBadge(status = 'Unknown', description = '') {
+            // Check if description contains "hủy" (case-insensitive) - show as cancelled
+            if (description && description.toLowerCase().includes('hủy')) {
+                return `
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 w-fit">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                        Bị Hủy
+                    </span>
+                `;
+            }
+
             // Return empty string if status is Unknown
             if (status === 'Unknown') {
                 return '';
@@ -585,7 +595,7 @@
             };
 
             return `
-                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${colorClasses[statusInfo.color]}">
+                <span class="inline-flex items-center px-2.5 py-1 w-fit  rounded-full text-xs font-medium ${colorClasses[statusInfo.color]}">
                     <span class="w-1.5 h-1.5 ${dotClasses[statusInfo.color]} rounded-full mr-1.5"></span>
                     ${statusInfo.label}
                 </span>
@@ -731,17 +741,31 @@
                 const data = await response.json();
 
                 if (data.retcode === 0 && data.data?.sls_tracking_info?.records) {
-                    const record = data.data.sls_tracking_info.records[0];
+                    const records = data.data.sls_tracking_info.records;
+
+                    // Loop through all records to check if any contains "hủy"
+                    let cancelledRecord = null;
+                    let latestRecord = records[0]; // Use first record as default/latest
+
+                    for (const record of records) {
+                        if (record.description && record.description.toLowerCase().includes('hủy')) {
+                            cancelledRecord = record;
+                            break; // Found cancelled, stop searching
+                        }
+                    }
+
+                    // Use cancelled record if found, otherwise use latest
+                    const resultRecord = cancelledRecord || latestRecord;
 
                     return {
                         status: 'success',
-                        description: record.description || '',
-                        trackingCode: record.tracking_code || '',
-                        lastUpdate: record.actual_time
-                            ? new Date(record.actual_time * 1000).toLocaleString('vi-VN')
+                        description: resultRecord.description || '',
+                        trackingCode: resultRecord.tracking_code || '',
+                        lastUpdate: resultRecord.actual_time
+                            ? new Date(resultRecord.actual_time * 1000).toLocaleString('vi-VN')
                             : '',
                         // Map description to status
-                        deliveryStatus: record.description
+                        deliveryStatus: resultRecord.description
                     };
                 } else {
                     return {
@@ -812,7 +836,26 @@
 
             // Fetch actual status from API
             const result = await fetchOrderStatus(trackingNumber);
-            const badgeHTML = getDeliveryStatusBadge(result.deliveryStatus);
+            const badgeHTML = getDeliveryStatusBadge(result.deliveryStatus, result.description);
+
+            // Get previous description
+            const previousDescription = row.getAttribute('data-last-description');
+
+            // Check if description changed and show notification
+            if (previousDescription && previousDescription !== result.description && result.description) {
+                // Show browser notification
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Cập nhật trạng thái vận đơn', {
+                        body: `Mã vận đơn: ${trackingNumber}\nTrạng thái: ${result.description}`,
+                    });
+                }
+            }
+
+            // Save current description for next comparison
+            row.setAttribute('data-last-description', result.description);
+            if (card) {
+                card.setAttribute('data-last-description', result.description);
+            }
 
             // Update table with title showing description and time display below
             const badgeWithTitle = badgeHTML.replace('<span class="inline-flex', `<span title="${result.description || 'Chưa có thông tin'}" class="inline-flex cursor-help`);
@@ -1614,10 +1657,32 @@
             });
         });
 
+        // Auto-refresh delivery status every 5 minutes
+        function startAutoRefresh() {
+            // Refresh every 5 minutes (300000 ms)
+            setInterval(async function () {
+                const tableRows = Array.from(document.querySelectorAll('#tableBody tr'));
+
+                for (const row of tableRows) {
+                    const trackingCell = row.querySelector('[data-field="trackingNumber"] .cell-value');
+                    const trackingNumber = trackingCell?.textContent.trim();
+
+                    if (trackingNumber && trackingNumber !== 'Click to add') {
+                        const rowId = row.getAttribute('data-row-id');
+                        const card = document.querySelector(`#cardContainer .order-card[data-row-id="${rowId}"]`);
+
+                        // Update status without showing loading overlay
+                        await updateDeliveryStatus(row, trackingNumber, card);
+                    }
+                }
+            }, 5 * 60 * 1000); // 5 minutes
+        }
+
         // Initial setup - Load data from Google Sheets
         window.addEventListener('DOMContentLoaded', async function () {
             try {
                 await loadOrdersFromSheet();
+                startAutoRefresh(); // Start auto-refresh after loading data
             } catch (error) {
                 console.error('Failed to load initial data:', error);
                 toggleEmptyState();
