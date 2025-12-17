@@ -236,6 +236,9 @@
                                 class="w-32 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
                                 Username</th>
                             <th
+                                class="w-28 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                Live/Die</th>
+                            <th
                                 class="w-32 px-3 py-3 text-left text-xs font-bold text-gray-800 uppercase tracking-wider">
                                 Tên người dùng</th>
                             <th
@@ -328,7 +331,7 @@
         const LANGUAGE_CODE = 'vi';
 
         // Google Apps Script URL (2-way sync)
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxDKYCWLhQKArFzoxO1Ev3cyLpoZWyUdxy63LVlyJ5iQgwWLYEKuUP1Hxjp_281OPyJ/exec';
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxx0pE9Ld-jXPWiWYIBWnEiL4rCNK1NFBqxX2GmOe_rj_8dW3pf10Q6qtW2klZ9OcLD/exec';
 
         // Order status options
         const ORDER_STATUSES = [
@@ -528,6 +531,9 @@
                 <td class="px-3 py-3 editable-cell" data-field="username">
                     <span class="cell-value text-sm truncate block" title="${order.username || ''}">${order.username || ''}</span>
                 </td>
+                <td class="px-3 py-3">
+                    <span class="shop-status-badge"></span>
+                </td>
                 <td class="px-3 py-3 editable-cell" data-field="name">
                     <span class="cell-value text-sm truncate block" title="${order.name || ''}">${order.name || ''}</span>
                 </td>
@@ -555,6 +561,11 @@
             // Auto fetch delivery status if tracking number exists (only for non-new rows)
             if (!isNewRow && order.trackingNumber && order.trackingNumber.trim()) {
                 updateDeliveryStatus(newRow, order.trackingNumber, newCard);
+            }
+
+            // Auto fetch shop status if username exists (only for non-new rows)
+            if (!isNewRow && order.username && order.username.trim()) {
+                updateShopStatus(newRow, order.username, newCard);
             }
         }
 
@@ -703,9 +714,19 @@
                 if (field === 'trackingNumber' && newValue.trim()) {
                     updateDeliveryStatus(row, newValue, card);
                 }
-            } else if (field === 'trackingNumber' && newValue.trim()) {
-                // If no card, just update table delivery status
-                updateDeliveryStatus(row, newValue);
+
+                // Update shop status if username changed (or cleared)
+                if (field === 'username') {
+                    updateShopStatus(row, newValue, card);
+                }
+            } else {
+                // If no card, just update table status
+                if (field === 'trackingNumber' && newValue.trim()) {
+                    updateDeliveryStatus(row, newValue);
+                }
+                if (field === 'username') {
+                    updateShopStatus(row, newValue);
+                }
             }
 
             // Only save to Google Sheets if value has changed, NOT a new row AND field is not deliveryStatus
@@ -805,7 +826,7 @@
 
         // API call to get delivery status
         async function updateDeliveryStatus(row, trackingNumber, card = null) {
-            const deliveryStatusCell = row.children[3];  // Index 3 vì STT ở 0, orderStatus ở 1, trackingNumber ở 2, deliveryStatus ở 3
+            const deliveryStatusCell = row.children[3];  // Index 3: STT(0), orderStatus(1), trackingNumber(2), deliveryStatus(3)
 
             // Show loading state in table
             deliveryStatusCell.innerHTML = `
@@ -874,6 +895,124 @@
             }
         }
 
+        // Fetch shop status from Shopee API
+        async function fetchShopStatus(username) {
+            try {
+                const apiUrl = `https://shopee.vn/api/v4/shop/get_shop_base?entry_point=&need_cancel_rate=true&request_source=shop_home_page&username=${encodeURIComponent(username)}`;
+                const url = `${PROXY_URL}${encodeURIComponent(apiUrl)}`;
+
+                const response = await fetch(url, {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (data && data.data && data.data.account && data.data.account.status !== undefined) {
+                    const accountStatus = data.data.account.status;
+                    return {
+                        status: 'success',
+                        accountStatus: accountStatus,
+                        shopStatus: accountStatus === 1 ? 'Live' : 'Die'
+                    };
+                } else {
+                    return {
+                        status: 'error',
+                        accountStatus: null,
+                        shopStatus: 'Unknown'
+                    };
+                }
+            } catch (error) {
+                console.error(`Error fetching shop status for ${username}:`, error);
+                return {
+                    status: 'error',
+                    accountStatus: null,
+                    shopStatus: 'Unknown'
+                };
+            }
+        }
+
+        // Update shop status (Live/Die)
+        async function updateShopStatus(row, username, card = null) {
+            const shopStatusCell = row.children[6];  // Index 6: STT(0), orderStatus(1), trackingNumber(2), deliveryStatus(3), cookie(4), username(5), Live/Die(6)
+
+            // Only show if username is not empty
+            if (!username || !username.trim()) {
+                shopStatusCell.innerHTML = '';
+                if (card) {
+                    const cardStatusContainer = card.querySelector('.shop-status-container');
+                    if (cardStatusContainer) {
+                        cardStatusContainer.innerHTML = '';
+                    }
+                }
+                return;
+            }
+
+            // Show loading state in table
+            shopStatusCell.innerHTML = `
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                    <svg class="animate-spin w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang tải...
+                </span>
+            `;
+
+            // Show loading state in card if provided
+            if (card) {
+                const cardStatusContainer = card.querySelector('.shop-status-container');
+                if (cardStatusContainer) {
+                    cardStatusContainer.innerHTML = `
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            <svg class="animate-spin w-3 h-3 mr-1.5" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Đang tải...
+                        </span>
+                    `;
+                }
+            }
+
+            // Fetch actual status from API
+            const result = await fetchShopStatus(username);
+
+            let badgeHTML = '';
+            if (result.shopStatus === 'Live') {
+                badgeHTML = `
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full mr-1.5"></span>
+                        Live
+                    </span>
+                `;
+            } else if (result.shopStatus === 'Die') {
+                badgeHTML = `
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <span class="w-1.5 h-1.5 bg-red-500 rounded-full mr-1.5"></span>
+                        Die
+                    </span>
+                `;
+            } else {
+                badgeHTML = `
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        <span class="w-1.5 h-1.5 bg-gray-500 rounded-full mr-1.5"></span>
+                        Unknown
+                    </span>
+                `;
+            }
+
+            // Update table
+            shopStatusCell.innerHTML = badgeHTML;
+
+            // Update card if provided
+            if (card) {
+                const cardStatusContainer = card.querySelector('.shop-status-container');
+                if (cardStatusContainer) {
+                    cardStatusContainer.innerHTML = badgeHTML;
+                }
+            }
+        }
+
         // Create new card for mobile view
         function createNewCard(rowId, data = {}, isNewRow = false) {
             const card = document.createElement('div');
@@ -899,6 +1038,12 @@
                         <div class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-2">Trạng thái giao hàng</div>
                         <div class="delivery-status-container">
                             ${getDeliveryStatusBadge('Unknown')}
+                        </div>
+                        <div class="flex items-center gap-2 mt-3">
+                            <div class="text-xs font-bold text-gray-700 uppercase tracking-wide">Live/Die:</div>
+                            <div class="shop-status-container">
+
+                            </div>
                         </div>
                     </div>
                     <div class="flex items-center gap-2 ml-4">
@@ -1088,6 +1233,11 @@
                 // Update delivery status if tracking number changed
                 if (fieldName === 'trackingNumber' && newValue.trim()) {
                     updateDeliveryStatus(tableRow, newValue, card);
+                }
+
+                // Update shop status if username changed (or cleared)
+                if (fieldName === 'username') {
+                    updateShopStatus(tableRow, newValue, card);
                 }
             }
 
